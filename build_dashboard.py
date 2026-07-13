@@ -14,7 +14,7 @@ import socketserver
 import webbrowser
 from pathlib import Path
 
-OUT_DIR = Path(__file__).parent / "hospital_sim" / "output"
+OUT_DIR = Path(__file__).parent / "output"
 
 
 def _b64(name: str) -> str:

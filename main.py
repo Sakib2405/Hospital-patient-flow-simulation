@@ -1,11 +1,3 @@
-"""CLI entry point for the hospital patient flow simulation.
-
-Usage:
-    python main.py                     # run all scenarios (normal, peak, pandemic) and compare
-    python main.py --scenario normal   # run a single scenario
-    python main.py --hours 168 --seed 7
-"""
-
 import argparse
 import os
 import webbrowser
@@ -14,16 +6,17 @@ import http.server
 import socketserver
 from pathlib import Path
 
+from hospital_sim.animation_export import write_animation_json
 from hospital_sim.hospital import run_simulation
 from hospital_sim.report import write_report, write_scenario_comparison
 from hospital_sim.scenarios import ALL_SCENARIOS
 
-OUTPUT_DIR = Path(__file__).parent / "hospital_sim" / "output"
+OUTPUT_DIR = Path(__file__).parent / "output"
 PORT = 8000
+ANIMATION_HORIZON_HOURS = 16.0
 
 
 def _start_server(directory: Path, port: int) -> socketserver.TCPServer:
-    """Start a simple HTTP server in the given directory on the given port."""
     os.chdir(str(directory))
 
     class Handler(http.server.SimpleHTTPRequestHandler):
@@ -70,6 +63,7 @@ def main():
         print(f"Running scenario: {name} ({cfg.sim_time_hours}h simulated)...")
         stats = run_simulation(cfg)
         summary = write_report(stats, OUTPUT_DIR, name)
+        write_animation_json(stats, OUTPUT_DIR, name, max_hours=ANIMATION_HORIZON_HOURS)
         summaries[name] = summary
         print(f"  -> {summary['n_patients']} patients processed, "
               f"avg wait {summary.get('avg_wait_before_treatment_min', 0):.1f} min, "
@@ -87,6 +81,14 @@ def main():
         build()
     except ImportError:
         print("Note: build_dashboard.py not found, skipping dashboard build")
+
+    try:
+        from build_animation_data import write_animation_page
+        page_path = write_animation_page(OUTPUT_DIR)
+        if page_path is not None:
+            print(f"Animation page written to: {page_path}")
+    except ImportError:
+        print("Note: build_animation_data.py not found, skipping animation page copy")
 
     # Start web server and open browser
     if not args.no_server:
